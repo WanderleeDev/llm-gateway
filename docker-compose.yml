@@ -1,0 +1,20 @@
+services:
+  gateway:
+    build: .
+    restart: unless-stopped
+    environment:
+      OLLAMA_URL: http://host.docker.internal:11434
+      GATEWAY_API_KEYS: ${GATEWAY_API_KEYS:?GATEWAY_API_KEYS is required}
+      ALLOWED_MODELS: ${ALLOWED_MODELS:-lfm25-8b}
+      MAX_CONCURRENT: ${MAX_CONCURRENT:-2}
+      QUEUE_TIMEOUT: ${QUEUE_TIMEOUT:-30}
+      UPSTREAM_TIMEOUT: ${UPSTREAM_TIMEOUT:-300}
+      # "none" inyecta reasoning_effort=none cuando el cliente no lo manda
+      # (thinking off por defecto; "" restaura el comportamiento de Ollama)
+      DEFAULT_REASONING_EFFORT: ${DEFAULT_REASONING_EFFORT:none}
+    extra_hosts:
+      # Ollama corre en el host; host-gateway resuelve a la IP del host desde el contenedor
+      - "host.docker.internal:host-gateway"
+    # Sin "ports": Traefik de Dokploy enruta al 8000 interno
+    expose:
+      - "8000"
