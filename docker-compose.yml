@@ -10,8 +10,9 @@ services:
       QUEUE_TIMEOUT: ${QUEUE_TIMEOUT:-30}
       UPSTREAM_TIMEOUT: ${UPSTREAM_TIMEOUT:-300}
       # "none" inyecta reasoning_effort=none cuando el cliente no lo manda
-      # (thinking off por defecto; "" restaura el comportamiento de Ollama)
-      DEFAULT_REASONING_EFFORT: ${DEFAULT_REASONING_EFFORT:none}
+      # (thinking off por defecto). Vacio/unset resuelve a "none" (compose v2
+      # no distingue); "no inyectar" solo queda disponible vía .env local.
+      DEFAULT_REASONING_EFFORT: ${DEFAULT_REASONING_EFFORT:-none}
     extra_hosts:
       # Ollama corre en el host; host-gateway resuelve a la IP del host desde el contenedor
       - "host.docker.internal:host-gateway"
