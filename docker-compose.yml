@@ -16,8 +16,8 @@ services:
       retries: 3
       start_period: 60s
 
-  # One-shot: descarga el modelo al volumen compartido. En redeploys el pull
-  # es instantaneo (ya existe). Si el volumen se borra, el modelo se re-descarga.
+  # One-shot: trae lfm2.5:8b (LFM2.5-8B-A1B Q4_K_M) desde el registro publico
+  # de Ollama al volumen ollama-data. En redeploys el pull es no-op instantaneo.
   ollama-init:
     image: ollama/ollama:0.40.6
     restart: "no"
@@ -31,8 +31,8 @@ services:
       - ollama-data:/root/.ollama
     networks:
       - llm
-    # Sin "ollama" al inicio: el ENTRYPOINT de la imagen ya es el binario.
-    command: ["pull", "lfm25-8b"]
+    # El ENTRYPOINT de la imagen ya es el binario; sin "ollama" al inicio.
+    command: ["pull", "lfm2.5:8b"]
 
   gateway:
     build: .
@@ -47,7 +47,7 @@ services:
       # OLLAMA_URL=http://localhost:11434 contra el Ollama del host.
       OLLAMA_URL: ${OLLAMA_URL:-http://ollama:11434}
       GATEWAY_API_KEYS: ${GATEWAY_API_KEYS:?GATEWAY_API_KEYS is required}
-      ALLOWED_MODELS: ${ALLOWED_MODELS:-lfm25-8b}
+      ALLOWED_MODELS: ${ALLOWED_MODELS:-lfm2.5:8b}
       MAX_CONCURRENT: ${MAX_CONCURRENT:-2}
       QUEUE_TIMEOUT: ${QUEUE_TIMEOUT:-30}
       UPSTREAM_TIMEOUT: ${UPSTREAM_TIMEOUT:-300}

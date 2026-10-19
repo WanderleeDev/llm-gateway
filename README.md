@@ -15,9 +15,10 @@ uv run uvicorn app.main:create_app --factory --port 8000
 
 Dokploy construye la imagen con el `Dockerfile` y usa `docker-compose.yml`. El proyecto
 encapsula a **Ollama** como service (`ollama/ollama:0.40.6` + volumen `ollama-data`), y un
-service one-shot `ollama-init` descarga el modelo al volumen compartido; el gateway lo
-alcanza por DNS interno (`OLLAMA_URL=http://ollama:11434`, default del compose). El Ollama
-del host (systemd, loopback) queda intocado para CLI/benchs locales.
+service one-shot `ollama-init` trae el modelo `lfm2.5:8b` (LFM2.5-8B-A1B) desde el registro
+público de Ollama; el gateway lo alcanza por DNS interno (`OLLAMA_URL=http://ollama:11434`,
+default del compose). En redeploys el pull es no-op. El Ollama del host (systemd, loopback)
+queda intocado para CLI/benchs locales.
 El gateway no public ports: el dominio se configura en Dokploy (service `gateway`,
 puerto `8000`) y la exposición la gobierna Traefik; el acceso está protegido por
 `GATEWAY_API_KEYS`.
@@ -25,7 +26,8 @@ Variables obligatorias en el panel de Dokploy:
 
 - `GATEWAY_API_KEYS`: una o más keys separadas por comas.
 
-Opcionales: `ALLOWED_MODELS`, `MAX_CONCURRENT`, `QUEUE_TIMEOUT`, `UPSTREAM_TIMEOUT`, `DEFAULT_REASONING_EFFORT`.
+Opcionales: `ALLOWED_MODELS` (default `lfm2.5:8b`), `MAX_CONCURRENT`, `QUEUE_TIMEOUT`,
+`UPSTREAM_TIMEOUT`, `DEFAULT_REASONING_EFFORT`.
 
 El dominio se configura en Dokploy apuntando al servicio `gateway`, puerto `8000`.
 
