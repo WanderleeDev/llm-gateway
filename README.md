@@ -31,6 +31,17 @@ Opcionales: `ALLOWED_MODELS` (default `lfm2.5:8b`), `MAX_CONCURRENT`, `QUEUE_TIM
 
 El dominio se configura en Dokploy apuntando al servicio `gateway`, puerto `8000`.
 
+## Uso
+
+El gateway sirve una **doc de uso** en HTML (renderizada con Jinja2), pública y sin auth,
+que se arma con la configuración vigente (URL base del request, modelos habilitados y effort
+por defecto):
+
+- `GET /docs` y `GET /`: ejemplos de cURL, del SDK de OpenAI y de streaming.
+
+Endpoints de API: `POST /v1/chat/completions` y `GET /v1/models` (ambos con
+`Authorization: Bearer <key>`), más `GET /health` sin auth.
+
 ## Razonamiento por defecto
 
 Cuando el cliente no manda `reasoning_effort`, el gateway inyecta `DEFAULT_REASONING_EFFORT`
@@ -40,5 +51,5 @@ de Ollama; en Dokploy un valor vacío resuelve a `none`. El valor que envíe el 
 siempre manda sobre el default.
 
 > Nota: la opción se respeta a nivel de Ollama, pero no todos los modelos la honran. El LFM 8B
-> (GGUF local) la ignora y sigue razonando igual; para él el presupuesto se cubre con
+> (`lfm2.5:8b`) la ignora y sigue razonando igual; para él el presupuesto se cubre con
 > `max_tokens` holgado.
