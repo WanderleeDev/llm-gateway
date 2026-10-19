@@ -26,8 +26,13 @@ Variables obligatorias en el panel de Dokploy:
 
 - `GATEWAY_API_KEYS`: una o más keys separadas por comas.
 
-Opcionales: `ALLOWED_MODELS` (default `lfm2.5:8b`), `MAX_CONCURRENT`, `QUEUE_TIMEOUT`,
-`UPSTREAM_TIMEOUT`, `DEFAULT_REASONING_EFFORT`.
+Opcionales: `ALLOWED_MODELS` (default `lfm2.5:8b`), `OLLAMA_URL`, `MAX_CONCURRENT`,
+`QUEUE_TIMEOUT`, `UPSTREAM_TIMEOUT`, `DEFAULT_REASONING_EFFORT`.
+
+> `OLLAMA_URL`: **no la setees en Dokploy**. El compose ya usa el service interno
+> `http://ollama:11434` como default. Setearla a `http://localhost:11434` hace que el
+> gateway se llame a sí mismo (en un contenedor, `localhost` es el propio contenedor) y
+> devuelva 502. Solo es útil en dev local, contra el Ollama del host.
 
 El dominio se configura en Dokploy apuntando al servicio `gateway`, puerto `8000`.
 
