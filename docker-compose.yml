@@ -24,11 +24,15 @@ services:
     depends_on:
       ollama:
         condition: service_healthy
+    environment:
+      # El CLI del init debe apuntar al SERVER que corre en el otro contenedor.
+      OLLAMA_HOST: http://ollama:11434
     volumes:
       - ollama-data:/root/.ollama
     networks:
       - llm
-    command: ["ollama", "pull", "lfm25-8b"]
+    # Sin "ollama" al inicio: el ENTRYPOINT de la imagen ya es el binario.
+    command: ["pull", "lfm25-8b"]
 
   gateway:
     build: .
