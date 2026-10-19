@@ -13,7 +13,11 @@ uv run uvicorn app.main:create_app --factory --port 8000
 
 ## Despliegue (Dokploy)
 
-Dokploy construye la imagen con el `Dockerfile` y usa `docker-compose.yml`.
+Dokploy construye la imagen con el `Dockerfile` y usa `docker-compose.yml`. El servicio corre
+en **host network mode** (`network_mode: host`): así llega al loopback de Ollama
+(`OLLAMA_URL=http://localhost:11434`, sin tocar el bind de Ollama) y binda
+`0.0.0.0:8000` en la VPS. La exposición pública la gobierna UFW; el acceso está
+protegido por `GATEWAY_API_KEYS`. Es el mismo patrón de red que usa el proxy `oci_llm`.
 Variables obligatorias en el panel de Dokploy:
 
 - `GATEWAY_API_KEYS`: una o más keys separadas por comas.
