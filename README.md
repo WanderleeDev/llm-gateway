@@ -13,11 +13,14 @@ uv run uvicorn app.main:create_app --factory --port 8000
 
 ## Despliegue (Dokploy)
 
-Dokploy construye la imagen con el `Dockerfile` y usa `docker-compose.yml`. El servicio corre
-en **host network mode** (`network_mode: host`): así llega al loopback de Ollama
-(`OLLAMA_URL=http://localhost:11434`, sin tocar el bind de Ollama) y binda
-`0.0.0.0:8000` en la VPS. La exposición pública la gobierna UFW; el acceso está
-protegido por `GATEWAY_API_KEYS`. Es el mismo patrón de red que usa el proxy `oci_llm`.
+Dokploy construye la imagen con el `Dockerfile` y usa `docker-compose.yml`. El proyecto
+encapsula a **Ollama** como service (`ollama/ollama:0.40.6` + volumen `ollama-data`), y un
+service one-shot `ollama-init` descarga el modelo al volumen compartido; el gateway lo
+alcanza por DNS interno (`OLLAMA_URL=http://ollama:11434`, default del compose). El Ollama
+del host (systemd, loopback) queda intocado para CLI/benchs locales.
+El gateway no public ports: el dominio se configura en Dokploy (service `gateway`,
+puerto `8000`) y la exposición la gobierna Traefik; el acceso está protegido por
+`GATEWAY_API_KEYS`.
 Variables obligatorias en el panel de Dokploy:
 
 - `GATEWAY_API_KEYS`: una o más keys separadas por comas.

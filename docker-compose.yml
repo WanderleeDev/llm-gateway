@@ -1,14 +1,47 @@
+# Red privada del proyecto: gateway y ollama se hablan por DNS de servicio.
+# Dokploy inyecta su red de Traefik (dokploy-network) sobre esto; ambas conviven
+# porque cada service puede estar en varias redes.
 services:
+  ollama:
+    image: ollama/ollama:0.40.6
+    restart: unless-stopped
+    volumes:
+      - ollama-data:/root/.ollama
+    networks:
+      - llm
+    healthcheck:
+      test: ["CMD", "ollama", "list"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 60s
+
+  # One-shot: descarga el modelo al volumen compartido. En redeploys el pull
+  # es instantaneo (ya existe). Si el volumen se borra, el modelo se re-descarga.
+  ollama-init:
+    image: ollama/ollama:0.40.6
+    restart: "no"
+    depends_on:
+      ollama:
+        condition: service_healthy
+    volumes:
+      - ollama-data:/root/.ollama
+    networks:
+      - llm
+    command: ["ollama", "pull", "lfm25-8b"]
+
   gateway:
     build: .
     restart: unless-stopped
-    # Host networking: Ollama escucha solo en loopback del host, y este modo
-    # es el mismo patrón que usa el proxy oci_llm. El servicio binda
-    # 0.0.0.0:8000 del host: la exposición pública la gobierna UFW, y el
-    # acceso está protegido por GATEWAY_API_KEYS.
-    network_mode: host
+    depends_on:
+      ollama:
+        condition: service_healthy
+      ollama-init:
+        condition: service_completed_successfully
     environment:
-      OLLAMA_URL: http://localhost:11434
+      # Interno por defecto (mismo proyecto); local dev sigue usando .env
+      # OLLAMA_URL=http://localhost:11434 contra el Ollama del host.
+      OLLAMA_URL: ${OLLAMA_URL:-http://ollama:11434}
       GATEWAY_API_KEYS: ${GATEWAY_API_KEYS:?GATEWAY_API_KEYS is required}
       ALLOWED_MODELS: ${ALLOWED_MODELS:-lfm25-8b}
       MAX_CONCURRENT: ${MAX_CONCURRENT:-2}
@@ -16,5 +49,13 @@ services:
       UPSTREAM_TIMEOUT: ${UPSTREAM_TIMEOUT:-300}
       # "none" inyecta reasoning_effort=none cuando el cliente no lo manda
       # (thinking off por defecto). Vacio/unset resuelve a "none" (compose v2
-      # no distingue); "no inyectar" solo queda disponible vía .env local.
+      # no distingue); "no inyectar" solo queda disponible via .env local.
       DEFAULT_REASONING_EFFORT: ${DEFAULT_REASONING_EFFORT:-none}
+    networks:
+      - llm
+
+volumes:
+  ollama-data:
+
+networks:
+  llm:
