@@ -45,7 +45,7 @@ class FakeOllama:
         if self.status >= 400:
             return httpx.Response(self.status, text="model crashed")
         if json.loads(request.content).get("stream"):
-            # Stream asíncrono: el cliente de la app lee el upstream con aiter_raw()
+            # Async stream: the app client reads the upstream with aiter_raw()
             return httpx.Response(
                 200,
                 stream=AsyncSSE([b'data: {"choices":[{"delta":{"content":"Ho"}}]}\n\n', b"data: [DONE]\n\n"]),

@@ -1,9 +1,9 @@
 <!doctype html>
-<html lang="es">
+<html lang="en">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>LLM Gateway · Uso</title>
+<title>LLM Gateway · Usage</title>
 <style>
   :root { color-scheme: light dark; }
   * { box-sizing: border-box; }
@@ -38,60 +38,60 @@
 <body>
 <main>
   <h1>LLM Gateway</h1>
-  <p class="sub">API compatible con OpenAI (subconjunto de chat) sobre Ollama.</p>
+  <p class="sub">OpenAI-compatible API (chat subset) on top of Ollama.</p>
 
-  <h2>Modelos disponibles</h2>
+  <h2>Available models</h2>
   <ul>
     {%- for model in models %}
     <li><code>{{ model }}</code></li>
     {%- endfor %}
   </ul>
-  <p class="note">El parámetro <code>model</code> debe ser exactamente uno de esos nombres.</p>
+  <p class="note">The <code>model</code> parameter must match exactly one of those names.</p>
 
-  <h2>Autenticación</h2>
-  <p>Los endpoints de API requieren el header:</p>
-  <pre><code>Authorization: {{ auth_scheme }} &lt;tu-api-key&gt;</code></pre>
-  <p class="note">Las keys se definen en <code>GATEWAY_API_KEYS</code>, separadas por coma.</p>
+  <h2>Authentication</h2>
+  <p>API endpoints require the header:</p>
+  <pre><code>Authorization: {{ auth_scheme }} &lt;your-api-key&gt;</code></pre>
+  <p class="note">Keys are defined in <code>GATEWAY_API_KEYS</code>, comma-separated.</p>
 
   <h2>Endpoints</h2>
   <table>
-    <tr><th>Método</th><th>Ruta</th><th>Auth</th></tr>
-    <tr><td>POST</td><td><code>/v1/chat/completions</code></td><td>Sí</td></tr>
-    <tr><td>GET</td><td><code>/v1/models</code></td><td>Sí</td></tr>
+    <tr><th>Method</th><th>Path</th><th>Auth</th></tr>
+    <tr><td>POST</td><td><code>/v1/chat/completions</code></td><td>Yes</td></tr>
+    <tr><td>GET</td><td><code>/v1/models</code></td><td>Yes</td></tr>
     <tr><td>GET</td><td><code>/health</code></td><td>No</td></tr>
     <tr><td>GET</td><td><code>/docs</code></td><td>No</td></tr>
   </table>
 
   <h2>cURL</h2>
   <pre><code>curl -sS {{ base_url }}v1/chat/completions \
-  -H "Authorization: {{ auth_scheme }} &lt;tu-api-key&gt;" \
+  -H "Authorization: {{ auth_scheme }} &lt;your-api-key&gt;" \
   -H "Content-Type: application/json" \
-  -d '{"model": "{{ models[0] }}", "messages": [{"role": "user", "content": "hola"}], "max_tokens": 200}'</code></pre>
+  -d '{"model": "{{ models[0] }}", "messages": [{"role": "user", "content": "hello"}], "max_tokens": 200}'</code></pre>
 
-  <h2>SDK de OpenAI (Python)</h2>
+  <h2>OpenAI SDK (Python)</h2>
   <pre><code>from openai import OpenAI
 
-client = OpenAI(base_url="{{ base_url }}v1", api_key="&lt;tu-api-key&gt;")
+client = OpenAI(base_url="{{ base_url }}v1", api_key="&lt;your-api-key&gt;")
 
 r = client.chat.completions.create(
     model="{{ models[0] }}",
-    messages=[{"role": "user", "content": "hola"}],
+    messages=[{"role": "user", "content": "hello"}],
     max_tokens=200,
 )
 print(r.choices[0].message.content)</code></pre>
 
   <h2>Streaming</h2>
   <pre><code>curl -N {{ base_url }}v1/chat/completions \
-  -H "Authorization: {{ auth_scheme }} &lt;tu-api-key&gt;" \
+  -H "Authorization: {{ auth_scheme }} &lt;your-api-key&gt;" \
   -H "Content-Type: application/json" \
-  -d '{"model": "{{ models[0] }}", "messages": [{"role": "user", "content": "hola"}], "stream": true}'</code></pre>
+  -d '{"model": "{{ models[0] }}", "messages": [{"role": "user", "content": "hello"}], "stream": true}'</code></pre>
 
-  <h2>Notas</h2>
+  <h2>Notes</h2>
   <ul>
-    <li><code>max_tokens</code>: si no se envía, Ollama genera sin tope (el modelo corta solo). Para respuestas acotadas, enviarlo.</li>
-    <li>Razonamiento por defecto del gateway: <code>{{ default_reasoning_effort }}</code>. Si el modelo es <em>reasoning-only</em>, puede devolver un bloque <code>&lt;think&gt;…&lt;/think&gt;</code> dentro de <code>content</code>; el gateway no lo filtra.</li>
-    <li>Errores con formato OpenAI: <code>{"error": {"message": …, "type": …, "code": …}}</code>.</li>
-    <li>No hay <code>/v1/embeddings</code>, <code>/v1/images</code> ni <code>/v1/completions</code>: solo chat y modelos.</li>
+    <li><code>max_tokens</code>: when omitted, Ollama generates without a cap (the model stops on its own). Send it for bounded answers.</li>
+    <li>Gateway default reasoning effort: <code>{{ default_reasoning_effort }}</code>. If the model is reasoning-only, it may return a <code>&lt;think&gt;…&lt;/think&gt;</code> block inside <code>content</code>; the gateway does not strip it.</li>
+    <li>Errors use the OpenAI shape: <code>{"error": {"message": …, "type": …, "code": …}}</code>.</li>
+    <li>There is no <code>/v1/embeddings</code>, <code>/v1/images</code> or <code>/v1/completions</code>: chat and models only.</li>
   </ul>
 </main>
 </body>

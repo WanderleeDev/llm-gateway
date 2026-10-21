@@ -7,7 +7,7 @@ from app.schemas import ErrorBody, ErrorResponse
 
 
 class APIError(Exception):
-    """Error que se devuelve al cliente en el formato {"error": {...}} de OpenAI."""
+    """Error returned to the client in OpenAI's {"error": {...}} format."""
 
     def __init__(
         self,

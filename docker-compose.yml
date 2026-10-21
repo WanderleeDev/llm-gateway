@@ -1,6 +1,6 @@
-# Red privada del proyecto: gateway y ollama se hablan por DNS de servicio.
-# Dokploy inyecta su red de Traefik (dokploy-network) sobre esto; ambas conviven
-# porque cada service puede estar en varias redes.
+# Private project network: the gateway and Ollama reach each other by service DNS name.
+# A reverse proxy can attach this project to its own network; a service may belong to
+# several networks at once.
 services:
   ollama:
     image: ollama/ollama:0.40.6
@@ -16,8 +16,8 @@ services:
       retries: 3
       start_period: 60s
 
-  # One-shot: trae lfm2.5:8b (LFM2.5-8B-A1B Q4_K_M) desde el registro publico
-  # de Ollama al volumen ollama-data. En redeploys el pull es no-op instantaneo.
+  # One-shot: pulls lfm2.5:8b (LFM2.5-8B-A1B Q4_K_M) from the public Ollama
+  # registry into the ollama-data volume. On redeploys the pull is an instant no-op.
   ollama-init:
     image: ollama/ollama:0.40.6
     restart: "no"
@@ -25,13 +25,13 @@ services:
       ollama:
         condition: service_healthy
     environment:
-      # El CLI del init debe apuntar al SERVER que corre en el otro contenedor.
+      # The init CLI must point at the SERVER running in the other container.
       OLLAMA_HOST: http://ollama:11434
     volumes:
       - ollama-data:/root/.ollama
     networks:
       - llm
-    # El ENTRYPOINT de la imagen ya es el binario; sin "ollama" al inicio.
+    # The image ENTRYPOINT is already the binary; no leading "ollama".
     command: ["pull", "lfm2.5:8b"]
 
   gateway:
@@ -43,17 +43,17 @@ services:
       ollama-init:
         condition: service_completed_successfully
     environment:
-      # Interno por defecto (mismo proyecto); local dev sigue usando .env
-      # OLLAMA_URL=http://localhost:11434 contra el Ollama del host.
+      # Internal by default (same project); local dev keeps using .env with
+      # OLLAMA_URL=http://localhost:11434 against a host Ollama.
       OLLAMA_URL: ${OLLAMA_URL:-http://ollama:11434}
       GATEWAY_API_KEYS: ${GATEWAY_API_KEYS:?GATEWAY_API_KEYS is required}
       ALLOWED_MODELS: ${ALLOWED_MODELS:-lfm2.5:8b}
       MAX_CONCURRENT: ${MAX_CONCURRENT:-2}
       QUEUE_TIMEOUT: ${QUEUE_TIMEOUT:-30}
       UPSTREAM_TIMEOUT: ${UPSTREAM_TIMEOUT:-300}
-      # "none" inyecta reasoning_effort=none cuando el cliente no lo manda
-      # (thinking off por defecto). Vacio/unset resuelve a "none" (compose v2
-      # no distingue); "no inyectar" solo queda disponible via .env local.
+      # "none" injects reasoning_effort=none when the client omits it
+      # (thinking off by default). Empty/unset resolves to "none" (compose v2
+      # cannot tell them apart); "inject nothing" is only available via a local .env.
       DEFAULT_REASONING_EFFORT: ${DEFAULT_REASONING_EFFORT:-none}
     networks:
       - llm

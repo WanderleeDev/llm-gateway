@@ -1,60 +1,110 @@
 # LLM Gateway
 
-Gateway FastAPI compatible con la API de OpenAI que reenvía a Ollama del host.
+A small FastAPI service that exposes an **OpenAI-compatible** Chat Completions API and
+forwards requests to [Ollama](https://ollama.com).
 
-## Desarrollo
+**This gateway powers the AI chat on [wanderlee.site](https://www.wanderlee.site).**
+Live usage docs: <https://llm.wanderlee.site/docs>
+
+## Why this exists
+
+Ollama's API is built for a trusted local network: no authentication, no limit on concurrent
+generations, no request budget. Exposing it directly to a website is a bad idea. This gateway
+sits in front of it and adds only what a public deployment actually needs:
+
+- **API-key authentication** (`Authorization: Bearer <key>`), compared in constant time.
+- A **concurrency limiter** so one box does not melt: extra requests wait in a bounded queue
+  and then receive `429 rate_limit_exceeded` instead of piling up until the upstream dies.
+- **OpenAI-shaped errors**, so official SDKs handle failures the way they expect.
+- A default **`reasoning_effort`** that stops thinking models from burning the token budget
+  before they answer.
+
+It does not try to be a full OpenAI implementation. There are no embeddings, images or legacy
+completions endpoints — only chat and models.
+
+## Features
+
+| Endpoint | Auth | Notes |
+|---|---|---|
+| `POST /v1/chat/completions` | Bearer | Streaming and non-streaming |
+| `GET /v1/models` | Bearer | Only the models allowed by config |
+| `GET /health` | — | Liveness probe |
+| `GET /docs`, `GET /` | — | Public HTML usage guide, rendered with Jinja2 |
+
+Unknown request fields (`temperature`, `tool_choice`, `top_p`, …) are forwarded to Ollama
+untouched, so clients do not need a gateway-specific schema.
+
+## Quick start
 
 ```bash
 uv sync --all-groups
-cp .env.example .env          # ajusta las keys
+cp .env.example .env          # set your keys
 uv run pytest
 uv run uvicorn app.main:create_app --factory --port 8000
 ```
 
-## Despliegue (Dokploy)
+The gateway **fails closed**: it refuses to start when `GATEWAY_API_KEYS` is empty.
 
-Dokploy construye la imagen con el `Dockerfile` y usa `docker-compose.yml`. El proyecto
-encapsula a **Ollama** como service (`ollama/ollama:0.40.6` + volumen `ollama-data`), y un
-service one-shot `ollama-init` trae el modelo `lfm2.5:8b` (LFM2.5-8B-A1B) desde el registro
-público de Ollama; el gateway lo alcanza por DNS interno (`OLLAMA_URL=http://ollama:11434`,
-default del compose). En redeploys el pull es no-op. El Ollama del host (systemd, loopback)
-queda intocado para CLI/benchs locales.
-El gateway no public ports: el dominio se configura en Dokploy (service `gateway`,
-puerto `8000`) y la exposición la gobierna Traefik; el acceso está protegido por
-`GATEWAY_API_KEYS`.
-Variables obligatorias en el panel de Dokploy:
+## Configuration
 
-- `GATEWAY_API_KEYS`: una o más keys separadas por comas.
+| Variable | Default | Description |
+|---|---|---|
+| `GATEWAY_API_KEYS` | — (required) | One or more keys, comma-separated |
+| `ALLOWED_MODELS` | `lfm2.5:8b` | Models clients may request, comma-separated |
+| `OLLAMA_URL` | `http://127.0.0.1:11434` | Upstream base URL (the compose file overrides it) |
+| `MAX_CONCURRENT` | `2` | Generations in flight at the same time |
+| `QUEUE_TIMEOUT` | `30` | Seconds a request may wait for a slot before `429` |
+| `UPSTREAM_TIMEOUT` | `300` | Upstream read timeout, in seconds |
+| `DEFAULT_REASONING_EFFORT` | `none` | Injected only when the client omits it |
 
-Opcionales: `ALLOWED_MODELS` (default `lfm2.5:8b`), `OLLAMA_URL`, `MAX_CONCURRENT`,
-`QUEUE_TIMEOUT`, `UPSTREAM_TIMEOUT`, `DEFAULT_REASONING_EFFORT`.
+## Deployment
 
-> `OLLAMA_URL`: **no la setees en Dokploy**. El compose ya usa el service interno
-> `http://ollama:11434` como default. Setearla a `http://localhost:11434` hace que el
-> gateway se llame a sí mismo (en un contenedor, `localhost` es el propio contenedor) y
-> devuelva 502. Solo es útil en dev local, contra el Ollama del host.
+The whole stack is one Docker Compose project:
 
-El dominio se configura en Dokploy apuntando al servicio `gateway`, puerto `8000`.
+- `ollama` — the model server, with a named volume for model weights.
+- `ollama-init` — a one-shot service that pulls the configured model into that volume.
+  On redeploys the pull is an instant no-op.
+- `gateway` — this app. It publishes no ports.
 
-## Uso
+```bash
+docker compose up -d --build
+```
 
-El gateway sirve una **doc de uso** en HTML (renderizada con Jinja2), pública y sin auth,
-que se arma con la configuración vigente (URL base del request, modelos habilitados y effort
-por defecto):
+Only `gateway` needs to be reachable from the outside. Put it behind any reverse proxy that
+terminates TLS and forwards to port `8000`, and set `GATEWAY_API_KEYS` in the environment or
+in a `.env` file next to the compose file. A host-level Ollama installation stays untouched:
+the compose project uses its own volume and its own process.
 
-- `GET /docs` y `GET /`: ejemplos de cURL, del SDK de OpenAI y de streaming.
+> **Do not point `OLLAMA_URL` at `localhost` inside a container.** The compose file already
+> defaults to the internal service DNS name (`http://ollama:11434`). Inside a container,
+> `localhost` is the container itself, so the gateway would call its own port and return
+> `502`. The `localhost` value is only useful for local development against a host Ollama on
+> `127.0.0.1:11434`.
 
-Endpoints de API: `POST /v1/chat/completions` y `GET /v1/models` (ambos con
-`Authorization: Bearer <key>`), más `GET /health` sin auth.
+## Default reasoning effort
 
-## Razonamiento por defecto
+When the client does not send `reasoning_effort`, the gateway injects
+`DEFAULT_REASONING_EFFORT` (default: `none`). This turns off Ollama's thinking before it
+consumes the token budget — a trivial prompt once cost 3877 tokens of pure reasoning.
 
-Cuando el cliente no manda `reasoning_effort`, el gateway inyecta `DEFAULT_REASONING_EFFORT`
-(defecto: `none`), que cierra el thinking de Ollama antes de que queme el presupuesto de
-tokens. Puesta a `""` (solo vía .env local) no inyecta nada y deja el comportamiento nativo
-de Ollama; en Dokploy un valor vacío resuelve a `none`. El valor que envíe el cliente
-siempre manda sobre el default.
+- A value sent by the client always wins over the default.
+- An empty string (only reachable through a local `.env`) injects nothing and leaves Ollama's
+  native behaviour untouched. In Docker Compose an empty value resolves to `none`, because
+  Compose v2 cannot distinguish "unset" from "empty".
 
-> Nota: la opción se respeta a nivel de Ollama, pero no todos los modelos la honran. El LFM 8B
-> (`lfm2.5:8b`) la ignora y sigue razonando igual; para él el presupuesto se cubre con
-> `max_tokens` holgado.
+> Not every model honours the option. `lfm2.5:8b` (LFM2.5-8B-A1B) ignores it and keeps
+> reasoning anyway; for that model, cap the budget with a generous `max_tokens` instead.
+
+## Tests
+
+```bash
+uv run pytest
+```
+
+The suite fakes Ollama with an `httpx` transport, so it needs no model and no network. It
+covers auth, concurrency (including slot release when a stream fails), streaming, error
+mapping and the usage page.
+
+## License
+
+MIT — see [LICENSE](LICENSE).

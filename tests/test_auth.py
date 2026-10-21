@@ -28,7 +28,7 @@ def test_non_bearer_schemes_are_rejected(client, header):
 
 
 def test_x_api_key_header_is_not_accepted(client):
-    # OpenAI solo usa Bearer; no ampliamos la superficie de autenticación
+    # OpenAI only uses Bearer; we do not widen the auth surface
     assert client.get("/v1/models", headers={"X-API-Key": TEST_KEY}).status_code == 401
 
 

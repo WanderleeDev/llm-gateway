@@ -16,7 +16,7 @@ def require_api_key(request: Request, settings: SettingsDep) -> None:
     if scheme.lower() != "bearer" or not token:
         raise _unauthorized()
 
-    # compare_digest sobre bytes: con str lanzaría TypeError ante caracteres no ASCII
+    # compare_digest on bytes: str would raise TypeError on non-ASCII characters
     presented = token.encode()
     if not any(secrets.compare_digest(presented, key.encode()) for key in settings.api_keys):
         raise _unauthorized()

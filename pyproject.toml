@@ -1,7 +1,7 @@
 [project]
 name = "llm-gateway"
 version = "0.1.0"
-description = "Gateway OpenAI-compatible para Ollama"
+description = "OpenAI-compatible gateway for Ollama"
 requires-python = ">=3.12"
 dependencies = [
     "fastapi>=0.115,<1",

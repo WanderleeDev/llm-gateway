@@ -14,8 +14,8 @@ class ChatMessage(BaseModel):
 
 
 class ChatCompletionRequest(BaseModel):
-    # extra="allow": parámetros como temperature, tool_choice o top_p
-    # se reenvían a Ollama sin tener que declararlos uno a uno.
+    # extra="allow": parameters such as temperature, tool_choice or top_p
+    # are forwarded to Ollama without declaring them one by one.
     model_config = ConfigDict(extra="allow")
 
     model: str = Field(min_length=1)
@@ -26,12 +26,12 @@ class ChatCompletionRequest(BaseModel):
 
     def to_upstream_payload(self, default_reasoning_effort: str = "") -> dict[str, Any]:
         payload = self.model_dump(exclude_none=True)
-        # Ollama no conoce el rol "developer"; equivale a "system".
+        # Ollama does not know the "developer" role; it is equivalent to "system".
         for message in payload["messages"]:
             if message["role"] == "developer":
                 message["role"] = "system"
-        # El default solo rellena la ausencia: si el cliente ya envió
-        # reasoning_effort (declarado o vía extra), el suyo manda.
+        # The default only fills the gap: if the client already sent
+        # reasoning_effort (declared or via extra), its value wins.
         if default_reasoning_effort and "reasoning_effort" not in payload:
             payload["reasoning_effort"] = default_reasoning_effort
         return payload

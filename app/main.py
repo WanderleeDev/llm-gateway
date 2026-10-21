@@ -14,11 +14,11 @@ def create_app(
     settings: Settings | None = None,
     transport: httpx.AsyncBaseTransport | None = None,
 ) -> FastAPI:
-    """Factory de la aplicación. `transport` permite simular Ollama en los tests."""
+    """Application factory. `transport` lets tests simulate Ollama."""
     if settings is None:
         settings = Settings()
     if not settings.api_keys:
-        # Falla cerrado: un gateway sin keys no debe arrancar
+        # Fail closed: a gateway without keys must not start
         raise RuntimeError("GATEWAY_API_KEYS must define at least one key")
 
     @asynccontextmanager

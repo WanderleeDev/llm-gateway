@@ -6,7 +6,7 @@ from tests.conftest import AUTH, CHAT_BODY, TEST_KEY
 
 CHAT_REQUEST = {
     "model": "lfm25-8b",
-    "messages": [{"role": "user", "content": "Hola"}],
+    "messages": [{"role": "user", "content": "Hello"}],
     "max_tokens": 64,
 }
 
@@ -29,7 +29,7 @@ def test_unknown_model_returns_404(client, fake_ollama):
     )
     assert response.status_code == 404
     assert response.json()["error"]["code"] == "model_not_found"
-    assert fake_ollama.requests == []  # nunca llega a Ollama
+    assert fake_ollama.requests == []  # never reaches Ollama
 
 
 def test_empty_messages_is_a_400(client):
@@ -48,8 +48,8 @@ def test_developer_role_is_sent_as_system(client, fake_ollama):
         json={
             "model": "lfm25-8b",
             "messages": [
-                {"role": "developer", "content": "Sé breve"},
-                {"role": "user", "content": "Hola"},
+                {"role": "developer", "content": "Be brief"},
+                {"role": "user", "content": "Hello"},
             ],
         },
         headers=AUTH,
@@ -72,7 +72,7 @@ def test_tools_and_extra_parameters_are_forwarded(client, fake_ollama):
 
 def test_tool_result_round_trip_is_forwarded(client, fake_ollama):
     messages = [
-        {"role": "user", "content": "¿Qué tiempo hace en Madrid?"},
+        {"role": "user", "content": "What is the weather in Madrid?"},
         {
             "role": "assistant",
             "content": None,
@@ -109,8 +109,8 @@ def test_upstream_error_keeps_status_and_openai_format(client, fake_ollama):
 
 
 def test_slot_is_released_after_upstream_error(client, fake_ollama):
-    # max_concurrent=1 en el fixture: si el error no libera el slot,
-    # la siguiente petición daría 429.
+    # max_concurrent=1 in the fixture: if the error does not release the slot,
+    # the next request would get 429.
     fake_ollama.status = 500
     client.post("/v1/chat/completions", json=CHAT_REQUEST, headers=AUTH)
 
@@ -137,8 +137,8 @@ def make_client(default_reasoning_effort: str, fake_ollama) -> TestClient:
 
 
 def test_default_reasoning_effort_injected_when_client_omits_it(fake_ollama):
-    # Sin especificarlo, Ollama deja el thinking encendido: un prompt trivial
-    # llegó a costar 3877 tokens. El default del gateway lo cierra.
+    # Without it, Ollama leaves thinking on: a trivial prompt once cost
+    # 3877 tokens. The gateway default turns it off.
     with make_client("none", fake_ollama) as c:
         c.post("/v1/chat/completions", json=CHAT_REQUEST, headers=AUTH)
     assert fake_ollama.last_payload()["reasoning_effort"] == "none"
@@ -151,7 +151,7 @@ def test_client_reasoning_effort_wins_over_default(fake_ollama):
 
 
 def test_empty_default_injects_nothing(fake_ollama):
-    # DEFAULT_REASONING_EFFORT="" restaura el comportamiento nativo de Ollama.
+    # DEFAULT_REASONING_EFFORT="" restores Ollama's native behaviour.
     with make_client("", fake_ollama) as c:
         c.post("/v1/chat/completions", json=CHAT_REQUEST, headers=AUTH)
     assert "reasoning_effort" not in fake_ollama.last_payload()

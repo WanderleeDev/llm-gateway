@@ -1,4 +1,4 @@
-"""Reenvío de peticiones a Ollama (su API es compatible con OpenAI en /v1/)."""
+"""Forwards requests to Ollama (its API is OpenAI-compatible under /v1/)."""
 
 from typing import Any
 
@@ -37,7 +37,7 @@ async def stream_chat(
     payload: dict[str, Any],
     limiter: ConcurrencyLimiter,
 ) -> StreamingResponse:
-    # El slot se libera cuando termina el stream, no al devolver la respuesta.
+    # The slot is released when the stream ends, not when the response is returned.
     await limiter.acquire()
     try:
         upstream = await client.send(

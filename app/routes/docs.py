@@ -6,8 +6,8 @@ from starlette.templating import Jinja2Templates
 
 from app.deps import SettingsDep
 
-#: La doc se renderiza desde el directorio del paquete, no desde el CWD,
-#: para que funcione igual en local, en tests y en el contenedor.
+#: The docs render from the package directory, not the CWD, so they work
+#: the same locally, in tests and inside the container.
 TEMPLATES_DIR = Path(__file__).resolve().parent.parent / "templates"
 templates = Jinja2Templates(directory=str(TEMPLATES_DIR))
 

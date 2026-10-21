@@ -6,9 +6,9 @@ from app.errors import APIError
 
 
 class ConcurrencyLimiter:
-    """Limita cuántas generaciones van a Ollama a la vez.
+    """Caps how many generations reach Ollama at the same time.
 
-    Las peticiones extra esperan hasta queue_timeout segundos y luego reciben 429.
+    Extra requests wait up to queue_timeout seconds and then receive 429.
     """
 
     def __init__(self, limit: int, queue_timeout: float) -> None:
