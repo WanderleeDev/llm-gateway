@@ -34,6 +34,23 @@ services:
     # The image ENTRYPOINT is already the binary; no leading "ollama".
     command: ["pull", "lfm2.5:8b"]
 
+  # Second one-shot: the embedding model. `ollama pull` accepts a single model
+  # per invocation, so each family gets its own service. Both are instant no-ops
+  # on redeploys because the weights already live in ollama-data.
+  ollama-init-embed:
+    image: ollama/ollama:0.40.6
+    restart: "no"
+    depends_on:
+      ollama:
+        condition: service_healthy
+    environment:
+      OLLAMA_HOST: http://ollama:11434
+    volumes:
+      - ollama-data:/root/.ollama
+    networks:
+      - llm
+    command: ["pull", "${OLLAMA_EMBEDDING_MODEL:-qwen3-embedding:0.6b}"]
+
   gateway:
     build: .
     restart: unless-stopped
@@ -42,12 +59,18 @@ services:
         condition: service_healthy
       ollama-init:
         condition: service_completed_successfully
+      ollama-init-embed:
+        condition: service_completed_successfully
     environment:
       # Internal by default (same project); local dev keeps using .env with
       # OLLAMA_URL=http://localhost:11434 against a host Ollama.
       OLLAMA_URL: ${OLLAMA_URL:-http://ollama:11434}
       GATEWAY_API_KEYS: ${GATEWAY_API_KEYS:?GATEWAY_API_KEYS is required}
       ALLOWED_MODELS: ${ALLOWED_MODELS:-lfm2.5:8b}
+      # Embedding models accepted by /v1/embeddings. Uses "-" instead of ":-" on
+      # purpose: an explicitly empty value disables the endpoint, while the
+      # other vars above cannot tell empty from unset.
+      ALLOWED_EMBEDDING_MODELS: ${ALLOWED_EMBEDDING_MODELS-qwen3-embedding:0.6b}
       MAX_CONCURRENT: ${MAX_CONCURRENT:-2}
       QUEUE_TIMEOUT: ${QUEUE_TIMEOUT:-30}
       UPSTREAM_TIMEOUT: ${UPSTREAM_TIMEOUT:-300}

@@ -7,7 +7,7 @@ from fastapi import FastAPI
 from app.concurrency import ConcurrencyLimiter
 from app.config import Settings
 from app.errors import register_error_handlers
-from app.routes import chat, docs, models
+from app.routes import chat, docs, embeddings, models
 
 
 def create_app(
@@ -43,6 +43,7 @@ def create_app(
     register_error_handlers(app)
     app.include_router(docs.router)
     app.include_router(models.router)
+    app.include_router(embeddings.router)
     app.include_router(chat.router)
 
     @app.get("/health")

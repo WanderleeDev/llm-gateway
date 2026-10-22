@@ -38,15 +38,24 @@
 <body>
 <main>
   <h1>LLM Gateway</h1>
-  <p class="sub">OpenAI-compatible API (chat subset) on top of Ollama.</p>
+  <p class="sub">OpenAI-compatible API (chat and embeddings) on top of Ollama.</p>
 
   <h2>Available models</h2>
+  <p>Chat models:</p>
   <ul>
     {%- for model in models %}
     <li><code>{{ model }}</code></li>
     {%- endfor %}
   </ul>
-  <p class="note">The <code>model</code> parameter must match exactly one of those names.</p>
+  {%- if embedding_models %}
+  <p>Embedding models:</p>
+  <ul>
+    {%- for model in embedding_models %}
+    <li><code>{{ model }}</code></li>
+    {%- endfor %}
+  </ul>
+  {%- endif %}
+  <p class="note">The <code>model</code> parameter must match exactly one of those names. Chat models go to <code>/v1/chat/completions</code>; embedding models go to <code>/v1/embeddings</code>. Each endpoint enforces its own list, so a chat model is rejected by <code>/v1/embeddings</code>, and the other way around.</p>
 
   <h2>Authentication</h2>
   <p>API endpoints require the header:</p>
@@ -57,6 +66,7 @@
   <table>
     <tr><th>Method</th><th>Path</th><th>Auth</th></tr>
     <tr><td>POST</td><td><code>/v1/chat/completions</code></td><td>Yes</td></tr>
+    <tr><td>POST</td><td><code>/v1/embeddings</code></td><td>Yes</td></tr>
     <tr><td>GET</td><td><code>/v1/models</code></td><td>Yes</td></tr>
     <tr><td>GET</td><td><code>/health</code></td><td>No</td></tr>
     <tr><td>GET</td><td><code>/docs</code></td><td>No</td></tr>
@@ -80,6 +90,27 @@ r = client.chat.completions.create(
 )
 print(r.choices[0].message.content)</code></pre>
 
+  {%- if embedding_models %}
+  <h2>Embeddings</h2>
+  <pre><code>curl -sS {{ base_url }}v1/embeddings \
+  -H "Authorization: {{ auth_scheme }} &lt;your-api-key&gt;" \
+  -H "Content-Type: application/json" \
+  -d '{"model": "{{ embedding_models[0] }}", "input": ["how do I reset my password?", "¿Cómo restablezco mi contraseña?"], "dimensions": 512}'</code></pre>
+
+  <p class="note"><code>input</code> accepts a single string or a list of strings; the response carries one embedding per item, in the same order. <code>dimensions</code> truncates the vector, so you can trade a little recall for a much smaller index. Token IDs are not supported.</p>
+
+  <h2>Embeddings SDK (Python)</h2>
+  <pre><code>r = client.embeddings.create(
+    model="{{ embedding_models[0] }}",
+    input=["hola mundo", "hello world"],
+    dimensions=512,
+)
+print(len(r.data), len(r.data[0].embedding))</code></pre>
+  {%- else %}
+  <h2>Embeddings</h2>
+  <p class="note">No embedding models are configured (<code>ALLOWED_EMBEDDING_MODELS</code> is empty), so <code>/v1/embeddings</code> rejects every request with <code>model_not_found</code>.</p>
+  {%- endif %}
+
   <h2>Streaming</h2>
   <pre><code>curl -N {{ base_url }}v1/chat/completions \
   -H "Authorization: {{ auth_scheme }} &lt;your-api-key&gt;" \
@@ -91,7 +122,7 @@ print(r.choices[0].message.content)</code></pre>
     <li><code>max_tokens</code>: when omitted, Ollama generates without a cap (the model stops on its own). Send it for bounded answers.</li>
     <li>Gateway default reasoning effort: <code>{{ default_reasoning_effort }}</code>. If the model is reasoning-only, it may return a <code>&lt;think&gt;…&lt;/think&gt;</code> block inside <code>content</code>; the gateway does not strip it.</li>
     <li>Errors use the OpenAI shape: <code>{"error": {"message": …, "type": …, "code": …}}</code>.</li>
-    <li>There is no <code>/v1/embeddings</code>, <code>/v1/images</code> or <code>/v1/completions</code>: chat and models only.</li>
+    <li>There is no <code>/v1/images</code> or <code>/v1/completions</code>: chat, embeddings and models only.</li>
   </ul>
 </main>
 </body>

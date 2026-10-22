@@ -21,6 +21,7 @@ def render_usage(request: Request, settings: SettingsDep) -> HTMLResponse:
         {
             "base_url": str(request.base_url),
             "models": settings.models,
+            "embedding_models": settings.embedding_models,
             "default_reasoning_effort": settings.default_reasoning_effort,
             "auth_scheme": "Bearer",
         },

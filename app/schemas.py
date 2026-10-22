@@ -1,6 +1,6 @@
 from typing import Any, Literal
 
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict, Field, field_validator
 
 
 class ChatMessage(BaseModel):
@@ -35,6 +35,33 @@ class ChatCompletionRequest(BaseModel):
         if default_reasoning_effort and "reasoning_effort" not in payload:
             payload["reasoning_effort"] = default_reasoning_effort
         return payload
+
+
+class EmbeddingRequest(BaseModel):
+    # extra="allow": Ollama ignores unknown parameters, so anything the client
+    # sends beyond this schema still reaches the upstream untouched.
+    model_config = ConfigDict(extra="allow")
+
+    model: str = Field(min_length=1)
+    # OpenAI also accepts token IDs here; Ollama's /v1/embeddings does not, so
+    # they are rejected below with an explicit message instead of being
+    # forwarded to an upstream that would refuse them anyway.
+    input: str | list[str]
+    encoding_format: Literal["float", "base64"] = "float"
+    dimensions: int | None = Field(default=None, ge=1)
+    user: str | None = None
+
+    @field_validator("input", mode="before")
+    @classmethod
+    def _reject_token_ids(cls, value: Any) -> Any:
+        # mode="before": the type union below would reject token IDs with a
+        # generic message before this validator ever ran.
+        if isinstance(value, list) and any(not isinstance(item, str) for item in value):
+            raise ValueError("must be a string or a list of strings; token IDs are not supported")
+        return value
+
+    def to_upstream_payload(self) -> dict[str, Any]:
+        return self.model_dump(exclude_none=True)
 
 
 class ErrorBody(BaseModel):

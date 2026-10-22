@@ -1,7 +1,7 @@
 # LLM Gateway
 
-A small FastAPI service that exposes an **OpenAI-compatible** Chat Completions API and
-forwards requests to [Ollama](https://ollama.com).
+A small FastAPI service that exposes an **OpenAI-compatible** Chat Completions and Embeddings
+API and forwards requests to [Ollama](https://ollama.com).
 
 **This gateway powers the AI chat on [wanderlee.site](https://www.wanderlee.site).**
 Live usage docs: <https://llm.wanderlee.site/docs>
@@ -19,15 +19,16 @@ sits in front of it and adds only what a public deployment actually needs:
 - A default **`reasoning_effort`** that stops thinking models from burning the token budget
   before they answer.
 
-It does not try to be a full OpenAI implementation. There are no embeddings, images or legacy
-completions endpoints — only chat and models.
+It does not try to be a full OpenAI implementation. There are no images or legacy completions
+endpoints — only chat, embeddings and models.
 
 ## Features
 
 | Endpoint | Auth | Notes |
 |---|---|---|
 | `POST /v1/chat/completions` | Bearer | Streaming and non-streaming |
-| `GET /v1/models` | Bearer | Only the models allowed by config |
+| `POST /v1/embeddings` | Bearer | OpenAI shape, forwarded to Ollama |
+| `GET /v1/models` | Bearer | Chat and embedding models allowed by config |
 | `GET /health` | — | Liveness probe |
 | `GET /docs`, `GET /` | — | Public HTML usage guide, rendered with Jinja2 |
 
@@ -50,7 +51,8 @@ The gateway **fails closed**: it refuses to start when `GATEWAY_API_KEYS` is emp
 | Variable | Default | Description |
 |---|---|---|
 | `GATEWAY_API_KEYS` | — (required) | One or more keys, comma-separated |
-| `ALLOWED_MODELS` | `lfm2.5:8b` | Models clients may request, comma-separated |
+| `ALLOWED_MODELS` | `lfm2.5:8b` | Chat models clients may request, comma-separated |
+| `ALLOWED_EMBEDDING_MODELS` | *(empty)* | Embedding models clients may request, comma-separated |
 | `OLLAMA_URL` | `http://127.0.0.1:11434` | Upstream base URL (the compose file overrides it) |
 | `MAX_CONCURRENT` | `2` | Generations in flight at the same time |
 | `QUEUE_TIMEOUT` | `30` | Seconds a request may wait for a slot before `429` |
@@ -62,8 +64,10 @@ The gateway **fails closed**: it refuses to start when `GATEWAY_API_KEYS` is emp
 The whole stack is one Docker Compose project:
 
 - `ollama` — the model server, with a named volume for model weights.
-- `ollama-init` — a one-shot service that pulls the configured model into that volume.
-  On redeploys the pull is an instant no-op.
+- `ollama-init` — a one-shot service that pulls the chat model into that volume.
+- `ollama-init-embed` — a one-shot service that pulls the embedding model. `ollama pull`
+  accepts a single model per invocation, so each family gets its own service. On redeploys
+  both pulls are instant no-ops.
 - `gateway` — this app. It publishes no ports.
 
 ```bash
@@ -94,6 +98,20 @@ consumes the token budget — a trivial prompt once cost 3877 tokens of pure rea
 
 > Not every model honours the option. `lfm2.5:8b` (LFM2.5-8B-A1B) ignores it and keeps
 > reasoning anyway; for that model, cap the budget with a generous `max_tokens` instead.
+
+## Embeddings
+
+`POST /v1/embeddings` is a thin proxy. Ollama already serves the endpoint with the OpenAI
+shape, so the gateway enforces `ALLOWED_EMBEDDING_MODELS` and forwards the body; nothing is
+translated.
+
+- `input` accepts a string or a list of strings. Token IDs are rejected with `400`, because
+  Ollama does not support them and would refuse the request anyway.
+- `dimensions` truncates the vector, so a 1024-wide model can serve a 256-wide index.
+- Chat and embedding models are separate allowlists: `lfm2.5:8b` is rejected by
+  `/v1/embeddings` even though it is a valid chat model.
+- The model must be pulled into the compose volume first; `ollama-init-embed` does that on
+  deploy (`OLLAMA_EMBEDDING_MODEL` picks a different one).
 
 ## Tests
 

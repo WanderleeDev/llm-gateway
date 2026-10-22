@@ -17,6 +17,11 @@ class Settings(BaseSettings):
     ollama_url: str = "http://127.0.0.1:11434"
     gateway_api_keys: str = ""
     allowed_models: str = "lfm2.5:8b"
+    #: Kept separate from allowed_models on purpose: a chat model cannot serve
+    #: embeddings, and a client that discovers models through /v1/models must
+    #: not be able to send either family to the wrong endpoint. Empty means
+    #: /v1/embeddings rejects every model.
+    allowed_embedding_models: str = ""
     max_concurrent: int = Field(default=2, ge=1)
     queue_timeout: float = Field(default=30.0, gt=0)
     upstream_timeout: float = Field(default=300.0, gt=0)
@@ -42,3 +47,7 @@ class Settings(BaseSettings):
     @property
     def models(self) -> list[str]:
         return _split_csv(self.allowed_models)
+
+    @property
+    def embedding_models(self) -> list[str]:
+        return _split_csv(self.allowed_embedding_models)

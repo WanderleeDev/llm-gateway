@@ -24,6 +24,17 @@ CHAT_BODY = {
 }
 
 
+EMBEDDING_BODY = {
+    "object": "list",
+    "model": "qwen3-embedding:0.6b",
+    "data": [
+        {"object": "embedding", "index": 0, "embedding": [0.1, 0.2, 0.3]},
+        {"object": "embedding", "index": 1, "embedding": [0.4, 0.5, 0.6]},
+    ],
+    "usage": {"prompt_tokens": 6, "total_tokens": 6},
+}
+
+
 class AsyncSSE(httpx.AsyncByteStream):
     def __init__(self, chunks: list[bytes]) -> None:
         self.chunks = chunks
@@ -44,7 +55,10 @@ class FakeOllama:
         self.requests.append(request)
         if self.status >= 400:
             return httpx.Response(self.status, text="model crashed")
-        if json.loads(request.content).get("stream"):
+        body = json.loads(request.content)
+        if request.url.path == "/v1/embeddings":
+            return httpx.Response(200, json=EMBEDDING_BODY)
+        if body.get("stream"):
             # Async stream: the app client reads the upstream with aiter_raw()
             return httpx.Response(
                 200,
@@ -72,6 +86,7 @@ def settings() -> Settings:
         _env_file=None,
         gateway_api_keys=TEST_KEY,
         allowed_models="lfm25-8b,qwen3.5:4b",
+        allowed_embedding_models="qwen3-embedding:0.6b",
         max_concurrent=1,
         queue_timeout=0.5,
     )

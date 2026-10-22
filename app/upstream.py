@@ -9,6 +9,7 @@ from app.concurrency import ConcurrencyLimiter
 from app.errors import APIError
 
 CHAT_PATH = "/v1/chat/completions"
+EMBEDDINGS_PATH = "/v1/embeddings"
 
 
 async def _error_from_upstream(response: httpx.Response) -> APIError:
@@ -16,20 +17,43 @@ async def _error_from_upstream(response: httpx.Response) -> APIError:
     return APIError(response.status_code, text or "Upstream error", "api_error")
 
 
-async def complete_chat(
+async def _complete(
     client: httpx.AsyncClient,
+    path: str,
     payload: dict[str, Any],
     limiter: ConcurrencyLimiter,
 ) -> dict[str, Any]:
+    """POST a JSON body to Ollama and return the decoded response.
+
+    Shared by every non-streaming endpoint: they differ only in the path they
+    call. The slot is held for the whole upstream call and always released,
+    including when Ollama answers with an error status.
+    """
     async with limiter.slot():
         try:
-            response = await client.post(CHAT_PATH, json=payload)
+            response = await client.post(path, json=payload)
         except httpx.HTTPError as exc:
             raise APIError(502, "Upstream unavailable") from exc
 
     if response.status_code >= 400:
         raise await _error_from_upstream(response)
     return response.json()
+
+
+async def complete_chat(
+    client: httpx.AsyncClient,
+    payload: dict[str, Any],
+    limiter: ConcurrencyLimiter,
+) -> dict[str, Any]:
+    return await _complete(client, CHAT_PATH, payload, limiter)
+
+
+async def complete_embedding(
+    client: httpx.AsyncClient,
+    payload: dict[str, Any],
+    limiter: ConcurrencyLimiter,
+) -> dict[str, Any]:
+    return await _complete(client, EMBEDDINGS_PATH, payload, limiter)
 
 
 async def stream_chat(
