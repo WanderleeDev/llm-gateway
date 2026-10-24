@@ -120,7 +120,7 @@ print(len(r.data), len(r.data[0].embedding))</code></pre>
   <h2>Notes</h2>
   <ul>
     <li><code>max_tokens</code>: when omitted, Ollama generates without a cap (the model stops on its own). Send it for bounded answers.</li>
-    <li>Gateway default reasoning effort: <code>{{ default_reasoning_effort }}</code>. To turn thinking on for a single request, send <code>reasoning_effort</code> yourself (<code>minimal</code>, <code>low</code>, <code>medium</code>, <code>high</code>). Ollama's native <code>think</code> flag is forwarded untouched, but the injected default wins over it, so <code>think: true</code> alone does nothing while the default is <code>none</code>. Thinking comes back in a separate <code>reasoning</code> field; a reasoning-only model may instead put a <code>&lt;think&gt;…&lt;/think&gt;</code> block inside <code>content</code>, which the gateway does not strip.</li>
+    <li>Gateway default reasoning effort: <code>{{ default_reasoning_effort }}</code>. To turn thinking on for a single request, send <code>reasoning_effort</code> yourself, or the nested <code>reasoning: {"effort": …}</code>. Thinking is controlled by that OpenAI field only: Ollama's native <code>think</code> belongs to <code>/api/chat</code> and is ignored on the OpenAI-compatible endpoint this gateway calls. Thinking comes back in a separate <code>reasoning</code> field; a reasoning-only model may instead put a <code>&lt;think&gt;…&lt;/think&gt;</code> block inside <code>content</code>, which the gateway does not strip.</li>
     <li>Errors use the OpenAI shape: <code>{"error": {"message": …, "type": …, "code": …}}</code>.</li>
     <li>There is no <code>/v1/images</code> or <code>/v1/completions</code>: chat, embeddings and models only.</li>
   </ul>

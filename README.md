@@ -92,18 +92,25 @@ When the client does not send `reasoning_effort`, the gateway injects
 `DEFAULT_REASONING_EFFORT` (default: `none`). This turns off Ollama's thinking before it
 consumes the token budget — a trivial prompt once cost 3877 tokens of pure reasoning.
 
-- A value sent by the client always wins over the default.
-- Ollama's native `think` flag is forwarded untouched, but it does **not** beat the default:
-  with `DEFAULT_REASONING_EFFORT=none` the gateway also sends `reasoning_effort=none`, and
-  Ollama honours `none` over `think: true`. Verified on `qwen3.5:4b`: `think: true` on its own
-  still cost 2 completion tokens. To turn thinking on for one request, send `reasoning_effort`
-  explicitly (`minimal`, `low`, `medium`, `high`) — 161 tokens on the same prompt.
+- A value sent by the client always wins over the default. Both forms work: the flat
+  `reasoning_effort` and the nested `reasoning.effort` (Ollama prefers the nested one when
+  both arrive).
 - An empty string (only reachable through a local `.env`) injects nothing and leaves Ollama's
   native behaviour untouched. In Docker Compose an empty value resolves to `none`, because
   Compose v2 cannot distinguish "unset" from "empty".
 
+> Thinking is controlled through the **OpenAI** field, not Ollama's native one. The gateway
+> calls `/v1/chat/completions`, where Ollama maps `reasoning_effort` (or `reasoning.effort`)
+> onto its internal `think`. The native `think` field belongs to `/api/chat`: on the
+> OpenAI-compatible endpoint it is an unknown key and is silently ignored, so `think: true`
+> does nothing and `think: false` does not turn thinking off. Verified on `qwen3.5:4b`:
+> `think: false` through `/v1` still produced 184 reasoning tokens; the same flag on
+> `/api/chat` produced 2.
+
 > Not every model honours the option. `qwen3.5:4b` does: the same trivial prompt cost 177
-> completion tokens with thinking on and 2 with `reasoning_effort=none`. The previous default,
+> completion tokens with thinking on and 2 with `reasoning_effort=none`. It is boolean-only —
+> `/api/show` reports `thinking.values: [false, true]` — so `low`, `medium` and `high` all mean
+> "on"; named levels only differ on models that publish them. The previous default,
 > `lfm2.5:8b` (LFM2.5-8B-A1B), ignored the option and kept reasoning anyway; for a model like
 > that, cap the budget with a generous `max_tokens` instead.
 
