@@ -93,6 +93,11 @@ When the client does not send `reasoning_effort`, the gateway injects
 consumes the token budget — a trivial prompt once cost 3877 tokens of pure reasoning.
 
 - A value sent by the client always wins over the default.
+- Ollama's native `think` flag is forwarded untouched, but it does **not** beat the default:
+  with `DEFAULT_REASONING_EFFORT=none` the gateway also sends `reasoning_effort=none`, and
+  Ollama honours `none` over `think: true`. Verified on `qwen3.5:4b`: `think: true` on its own
+  still cost 2 completion tokens. To turn thinking on for one request, send `reasoning_effort`
+  explicitly (`minimal`, `low`, `medium`, `high`) — 161 tokens on the same prompt.
 - An empty string (only reachable through a local `.env`) injects nothing and leaves Ollama's
   native behaviour untouched. In Docker Compose an empty value resolves to `none`, because
   Compose v2 cannot distinguish "unset" from "empty".
