@@ -51,7 +51,7 @@ The gateway **fails closed**: it refuses to start when `GATEWAY_API_KEYS` is emp
 | Variable | Default | Description |
 |---|---|---|
 | `GATEWAY_API_KEYS` | — (required) | One or more keys, comma-separated |
-| `ALLOWED_MODELS` | `lfm2.5:8b` | Chat models clients may request, comma-separated |
+| `ALLOWED_MODELS` | `qwen3.5:4b` | Chat models clients may request, comma-separated |
 | `ALLOWED_EMBEDDING_MODELS` | *(empty)* | Embedding models clients may request, comma-separated |
 | `OLLAMA_URL` | `http://127.0.0.1:11434` | Upstream base URL (the compose file overrides it) |
 | `MAX_CONCURRENT` | `2` | Generations in flight at the same time |
@@ -64,7 +64,8 @@ The gateway **fails closed**: it refuses to start when `GATEWAY_API_KEYS` is emp
 The whole stack is one Docker Compose project:
 
 - `ollama` — the model server, with a named volume for model weights.
-- `ollama-init` — a one-shot service that pulls the chat model into that volume.
+- `ollama-init` — a one-shot service that pulls the chat model into that volume
+  (`OLLAMA_CHAT_MODEL` picks a different one; it must match `ALLOWED_MODELS`).
 - `ollama-init-embed` — a one-shot service that pulls the embedding model. `ollama pull`
   accepts a single model per invocation, so each family gets its own service. On redeploys
   both pulls are instant no-ops.
@@ -96,8 +97,10 @@ consumes the token budget — a trivial prompt once cost 3877 tokens of pure rea
   native behaviour untouched. In Docker Compose an empty value resolves to `none`, because
   Compose v2 cannot distinguish "unset" from "empty".
 
-> Not every model honours the option. `lfm2.5:8b` (LFM2.5-8B-A1B) ignores it and keeps
-> reasoning anyway; for that model, cap the budget with a generous `max_tokens` instead.
+> Not every model honours the option. `qwen3.5:4b` does: the same trivial prompt cost 177
+> completion tokens with thinking on and 2 with `reasoning_effort=none`. The previous default,
+> `lfm2.5:8b` (LFM2.5-8B-A1B), ignored the option and kept reasoning anyway; for a model like
+> that, cap the budget with a generous `max_tokens` instead.
 
 ## Embeddings
 
@@ -108,7 +111,7 @@ translated.
 - `input` accepts a string or a list of strings. Token IDs are rejected with `400`, because
   Ollama does not support them and would refuse the request anyway.
 - `dimensions` truncates the vector, so a 1024-wide model can serve a 256-wide index.
-- Chat and embedding models are separate allowlists: `lfm2.5:8b` is rejected by
+- Chat and embedding models are separate allowlists: `qwen3.5:4b` is rejected by
   `/v1/embeddings` even though it is a valid chat model.
 - The model must be pulled into the compose volume first; `ollama-init-embed` does that on
   deploy (`OLLAMA_EMBEDDING_MODEL` picks a different one).

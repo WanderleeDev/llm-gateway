@@ -16,7 +16,7 @@ class Settings(BaseSettings):
 
     ollama_url: str = "http://127.0.0.1:11434"
     gateway_api_keys: str = ""
-    allowed_models: str = "lfm2.5:8b"
+    allowed_models: str = "qwen3.5:4b"
     #: Kept separate from allowed_models on purpose: a chat model cannot serve
     #: embeddings, and a client that discovers models through /v1/models must
     #: not be able to send either family to the wrong endpoint. Empty means
