@@ -155,3 +155,47 @@ def test_empty_default_injects_nothing(fake_ollama):
     with make_client("", fake_ollama) as c:
         c.post("/v1/chat/completions", json=CHAT_REQUEST, headers=AUTH)
     assert "reasoning_effort" not in fake_ollama.last_payload()
+
+
+def test_think_true_turns_thinking_on_and_beats_the_default(fake_ollama):
+    # `think` is Ollama's native switch and does not exist on /v1/chat/completions,
+    # so the gateway must translate it instead of forwarding it. Turning thinking on
+    # sends no effort at all: local models are boolean-only, so the model's own
+    # default is the only thing there is to ask for.
+    with make_client("none", fake_ollama) as c:
+        c.post("/v1/chat/completions", json={**CHAT_REQUEST, "think": True}, headers=AUTH)
+    sent = fake_ollama.last_payload()
+    assert "reasoning_effort" not in sent
+    assert "think" not in sent
+
+
+def test_think_false_turns_thinking_off(fake_ollama):
+    with make_client("", fake_ollama) as c:
+        c.post("/v1/chat/completions", json={**CHAT_REQUEST, "think": False}, headers=AUTH)
+    sent = fake_ollama.last_payload()
+    assert sent["reasoning_effort"] == "none"
+    assert "think" not in sent
+
+
+def test_think_rejects_effort_levels(client, fake_ollama):
+    # The configured model has no named levels (thinking.values: [false, true]),
+    # so accepting "low" would promise something Ollama cannot deliver. A client
+    # that really needs a level can still send reasoning_effort itself.
+    response = client.post(
+        "/v1/chat/completions",
+        json={**CHAT_REQUEST, "think": "low"},
+        headers=AUTH,
+    )
+    assert response.status_code == 400
+    assert response.json()["error"]["code"] == "invalid_request"
+    assert fake_ollama.requests == []
+
+
+def test_nested_reasoning_is_not_given_a_flat_default(fake_ollama):
+    # Ollama prefers the nested form, but relying on that would make the outcome
+    # depend on upstream precedence instead of on what the client asked for.
+    with make_client("none", fake_ollama) as c:
+        c.post("/v1/chat/completions", json={**CHAT_REQUEST, "reasoning": {"effort": "high"}}, headers=AUTH)
+    sent = fake_ollama.last_payload()
+    assert sent["reasoning"] == {"effort": "high"}
+    assert "reasoning_effort" not in sent

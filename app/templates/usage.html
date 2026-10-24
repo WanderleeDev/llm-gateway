@@ -72,6 +72,17 @@
     <tr><td>GET</td><td><code>/docs</code></td><td>No</td></tr>
   </table>
 
+  <h2>Chat parameters</h2>
+  <table>
+    <tr><th>Field</th><th>Type</th><th>Notes</th></tr>
+    <tr><td><code>model</code></td><td>string</td><td>Required. One of the chat models listed above.</td></tr>
+    <tr><td><code>messages</code></td><td>array</td><td>Required. <code>system</code>, <code>developer</code> (sent upstream as <code>system</code>), <code>user</code>, <code>assistant</code> or <code>tool</code>.</td></tr>
+    <tr><td><code>max_tokens</code></td><td>integer</td><td>Optional cap. Without it the model stops on its own.</td></tr>
+    <tr><td><code>stream</code></td><td>boolean</td><td>Server-sent events instead of one JSON body.</td></tr>
+    <tr><td><code>think</code></td><td>boolean</td><td>Thinking on or off for this request. Overrides the gateway default. See <a href="#thinking">Thinking</a>.</td></tr>
+    <tr><td><code>temperature</code>, <code>top_p</code>, <code>tools</code>, <code>tool_choice</code>, …</td><td>any</td><td>Forwarded to Ollama untouched.</td></tr>
+  </table>
+
   <h2>cURL</h2>
   <pre><code>curl -sS {{ base_url }}v1/chat/completions \
   -H "Authorization: {{ auth_scheme }} &lt;your-api-key&gt;" \
@@ -89,6 +100,24 @@ r = client.chat.completions.create(
     max_tokens=200,
 )
 print(r.choices[0].message.content)</code></pre>
+
+  <h2 id="thinking">Thinking</h2>
+  <p>Send <code>think</code> to decide per request. It is a boolean, because the configured model publishes <code>thinking.values: [false, true]</code> — there are no effort levels to choose.</p>
+  <pre><code>curl -sS {{ base_url }}v1/chat/completions \
+  -H "Authorization: {{ auth_scheme }} &lt;your-api-key&gt;" \
+  -H "Content-Type: application/json" \
+  -d '{"model": "{{ models[0] }}", "messages": [{"role": "user", "content": "hello"}], "think": false, "max_tokens": 200}'</code></pre>
+  <p class="note"><code>false</code> turns thinking off. <code>true</code> turns it on by sending no effort at all, so the model's own default applies. Omitting the field means the gateway default, <code>{{ default_reasoning_effort }}</code>. The reasoning trace comes back in a separate <code>reasoning</code> field next to <code>content</code>.</p>
+  <pre><code>r = client.chat.completions.create(
+    model="{{ models[0] }}",
+    messages=[{"role": "user", "content": "hello"}],
+    max_tokens=200,
+    extra_body={"think": False},
+)
+msg = r.choices[0].message
+print(msg.content)
+print(msg.model_extra.get("reasoning"))   # None when thinking was off</code></pre>
+  <p class="note">The OpenAI SDK does not know <code>think</code>, so it travels in <code>extra_body</code>; <code>reasoning</code> is not part of the OpenAI schema either, so read it from <code>model_extra</code>. <code>think: "low"</code> is rejected with <code>400</code>, because this model has no named levels — if you ever run one that does, send <code>reasoning_effort</code> instead.</p>
 
   {%- if embedding_models %}
   <h2>Embeddings</h2>
@@ -120,7 +149,7 @@ print(len(r.data), len(r.data[0].embedding))</code></pre>
   <h2>Notes</h2>
   <ul>
     <li><code>max_tokens</code>: when omitted, Ollama generates without a cap (the model stops on its own). Send it for bounded answers.</li>
-    <li>Gateway default reasoning effort: <code>{{ default_reasoning_effort }}</code>. To turn thinking on for a single request, send <code>reasoning_effort</code> yourself, or the nested <code>reasoning: {"effort": …}</code>. Thinking is controlled by that OpenAI field only: Ollama's native <code>think</code> belongs to <code>/api/chat</code> and is ignored on the OpenAI-compatible endpoint this gateway calls. Thinking comes back in a separate <code>reasoning</code> field; a reasoning-only model may instead put a <code>&lt;think&gt;…&lt;/think&gt;</code> block inside <code>content</code>, which the gateway does not strip.</li>
+    <li>Gateway default reasoning effort: <code>{{ default_reasoning_effort }}</code>. Send <code>think</code> to override it per request — see <a href="#thinking">Thinking</a>.</li>
     <li>Errors use the OpenAI shape: <code>{"error": {"message": …, "type": …, "code": …}}</code>.</li>
     <li>There is no <code>/v1/images</code> or <code>/v1/completions</code>: chat, embeddings and models only.</li>
   </ul>

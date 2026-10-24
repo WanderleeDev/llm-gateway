@@ -25,11 +25,12 @@ class Settings(BaseSettings):
     max_concurrent: int = Field(default=2, ge=1)
     queue_timeout: float = Field(default=30.0, gt=0)
     upstream_timeout: float = Field(default=300.0, gt=0)
-    #: Reasoning injected when the client does not specify it. Ollama leaves
-    #: thinking on by default and burns tokens (a trivial prompt once cost
-    #: 3877). "none" turns it off; an empty string injects nothing and leaves
-    #: Ollama's native behaviour untouched.
-    default_reasoning_effort: str = "none"
+    #: Reasoning injected when the client does not specify it. Matches OpenAI, whose
+    #: reasoning models think unless told otherwise, so a client that wants the fast
+    #: path has to ask for it with `think: false` / `reasoning_effort: "none"`.
+    #: Set it to "none" to make thinking off the default instead. Ollama leaves
+    #: thinking on by itself, which is why this is injected at all.
+    default_reasoning_effort: str = "medium"
 
     @field_validator("default_reasoning_effort")
     @classmethod

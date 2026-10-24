@@ -76,10 +76,11 @@ services:
       MAX_CONCURRENT: ${MAX_CONCURRENT:-2}
       QUEUE_TIMEOUT: ${QUEUE_TIMEOUT:-30}
       UPSTREAM_TIMEOUT: ${UPSTREAM_TIMEOUT:-300}
-      # "none" injects reasoning_effort=none when the client omits it
-      # (thinking off by default). Empty/unset resolves to "none" (compose v2
-      # cannot tell them apart); "inject nothing" is only available via a local .env.
-      DEFAULT_REASONING_EFFORT: ${DEFAULT_REASONING_EFFORT:-none}
+      # "medium" keeps thinking on, matching OpenAI's reasoning models: a client
+      # that wants the fast path must send think:false. Set "none" to invert it.
+      # Empty/unset resolves to "medium" (compose v2 cannot tell them apart);
+      # "inject nothing" is only available via a local .env.
+      DEFAULT_REASONING_EFFORT: ${DEFAULT_REASONING_EFFORT:-medium}
     networks:
       - llm
 

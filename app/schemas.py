@@ -23,6 +23,12 @@ class ChatCompletionRequest(BaseModel):
     stream: bool = False
     max_tokens: int | None = Field(default=None, ge=1)
     tools: list[dict[str, Any]] | None = None
+    #: Ollama's native on/off switch, declared here only so it can be translated:
+    #: `/v1/chat/completions` does not know it, so forwarding it as an extra field
+    #: would be silently ignored. It is a boolean on purpose — the configured model
+    #: publishes `thinking.values: [false, true]`, with no named levels to choose.
+    #: A client that needs a level can send `reasoning_effort` itself.
+    think: bool | None = None
 
     def to_upstream_payload(self, default_reasoning_effort: str = "") -> dict[str, Any]:
         payload = self.model_dump(exclude_none=True)
@@ -30,9 +36,21 @@ class ChatCompletionRequest(BaseModel):
         for message in payload["messages"]:
             if message["role"] == "developer":
                 message["role"] = "system"
-        # The default only fills the gap: if the client already sent
-        # reasoning_effort (declared or via extra), its value wins.
-        if default_reasoning_effort and "reasoning_effort" not in payload:
+        # `think` belongs to /api/chat, not to the endpoint this gateway calls, so
+        # it is translated and never sent as-is. Turning thinking off is the only
+        # direction that needs a field: "none" is the sole off switch on /v1.
+        # Turning it on sends nothing, so the model's own default applies.
+        think = payload.pop("think", None)
+        if think is False:
+            payload["reasoning_effort"] = "none"
+        # The default only fills the gap: a client that already chose, with `think`
+        # or with an explicit effort (flat or nested), keeps control.
+        if (
+            default_reasoning_effort
+            and think is None
+            and "reasoning_effort" not in payload
+            and "reasoning" not in payload
+        ):
             payload["reasoning_effort"] = default_reasoning_effort
         return payload
 
