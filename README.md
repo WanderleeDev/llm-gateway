@@ -62,7 +62,7 @@ The gateway **fails closed**: it refuses to start when `GATEWAY_API_KEYS` is emp
 | Variable | Default | Description |
 |---|---|---|
 | `GATEWAY_API_KEYS` | — (required) | One or more keys, comma-separated |
-| `ALLOWED_MODELS` | `qwen3.5:4b` | Chat models clients may request, comma-separated |
+| `ALLOWED_MODELS` | `llama3.2:3b` | Chat models clients may request, comma-separated |
 | `ALLOWED_EMBEDDING_MODELS` | *(empty)* | Embedding models clients may request, comma-separated |
 | `OLLAMA_URL` | `http://127.0.0.1:11434` | Upstream base URL (the compose file overrides it) |
 | `MAX_CONCURRENT` | `2` | Generations in flight at the same time |

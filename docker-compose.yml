@@ -34,7 +34,7 @@ services:
     networks:
       - llm
     # The image ENTRYPOINT is already the binary; no leading "ollama".
-    command: ["pull", "${OLLAMA_CHAT_MODEL:-qwen3.5:4b}"]
+    command: ["pull", "${OLLAMA_CHAT_MODEL:-llama3.2:3b}"]
 
   # Second one-shot: the embedding model. `ollama pull` accepts a single model
   # per invocation, so each family gets its own service. Both are instant no-ops
@@ -68,7 +68,7 @@ services:
       # OLLAMA_URL=http://localhost:11434 against a host Ollama.
       OLLAMA_URL: ${OLLAMA_URL:-http://ollama:11434}
       GATEWAY_API_KEYS: ${GATEWAY_API_KEYS:?GATEWAY_API_KEYS is required}
-      ALLOWED_MODELS: ${ALLOWED_MODELS:-qwen3.5:4b}
+      ALLOWED_MODELS: ${ALLOWED_MODELS:-llama3.2:3b}
       # Embedding models accepted by /v1/embeddings. Uses "-" instead of ":-" on
       # purpose: an explicitly empty value disables the endpoint, while the
       # other vars above cannot tell empty from unset.
