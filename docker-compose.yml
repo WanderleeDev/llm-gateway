@@ -3,7 +3,7 @@
 # several networks at once.
 services:
   ollama:
-    image: ollama/ollama:0.40.6
+    image: ollama/ollama:0.40.13
     restart: unless-stopped
     volumes:
       - ollama-data:/root/.ollama
@@ -21,7 +21,7 @@ services:
   # Keep OLLAMA_CHAT_MODEL in sync with ALLOWED_MODELS: a model the gateway allows
   # but nobody pulled makes every request fail with a 502 from Ollama.
   ollama-init:
-    image: ollama/ollama:0.40.6
+    image: ollama/ollama:0.40.13
     restart: "no"
     depends_on:
       ollama:
@@ -40,7 +40,7 @@ services:
   # per invocation, so each family gets its own service. Both are instant no-ops
   # on redeploys because the weights already live in ollama-data.
   ollama-init-embed:
-    image: ollama/ollama:0.40.6
+    image: ollama/ollama:0.40.13
     restart: "no"
     depends_on:
       ollama:
